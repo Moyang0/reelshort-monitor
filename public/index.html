@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark" />
+<title>ReelShort · 剧集实时监控看板</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff2d55'/%3E%3Ctext x='16' y='22' font-size='15' font-weight='800' text-anchor='middle' fill='white' font-family='Arial'%3ERS%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="bg-fx" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">RS</span>
+    <div class="brand-txt">
+      <div class="brand-name">ReelShort</div>
+      <div class="brand-sub">LIVE ANALYTICS</div>
+    </div>
+  </div>
+
+  <div class="drama">
+    <div class="cover" id="coverBox">
+      <img id="coverImg" alt="剧集封面" referrerpolicy="no-referrer" />
+      <div class="cover-skeleton" id="coverSkeleton"></div>
+    </div>
+    <div class="drama-txt">
+      <h1 id="dramaTitle">正在加载剧集数据…</h1>
+      <div class="tag-row" id="tagRow"></div>
+      <div class="meta-row">
+        <span class="meta"><i>总集数</i><b id="metaTotal">—</b></span>
+        <span class="meta"><i>付费起始</i><b id="metaPaid">—</b></span>
+        <span class="meta"><i>样本</i><b id="metaSamples">—</b></span>
+        <span class="meta"><i>采样间隔</i><b id="metaPoll">—</b></span>
+        <span class="meta"><i>最近采样</i><b id="metaLast">—</b></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="range-switch" id="rangeSwitch" role="tablist" aria-label="时间范围"></div>
+    <div class="conn" id="conn" data-state="connecting" title="SSE 连接状态">
+      <span class="dot"></span><span id="connText">连接中</span>
+    </div>
+    <button id="refreshBtn" class="btn-refresh" type="button" title="立即触发一次后端采样">
+      <span class="spin">↻</span><span>刷新</span>
+    </button>
+  </div>
+</header>
+
+<div class="alert" id="alertBar" hidden>
+  <span class="alert-ico">!</span>
+  <span id="alertText"></span>
+  <button id="alertClose" class="alert-x" type="button" aria-label="关闭">×</button>
+</div>
+
+<section class="kpi-grid" id="kpiGrid" aria-label="核心指标"></section>
+
+<section class="growth-bar" aria-label="增长窗口">
+  <span class="gb-label">增长窗口 <b>Δ播放量</b></span>
+  <div class="growth-strip" id="growthStrip"></div>
+  <span class="gb-note">对比各时间窗口起点 → 当前的真实增量</span>
+</section>
+
+<main class="dash-grid">
+  <article class="card span-8" id="trendCard">
+    <div class="card-head">
+      <div class="card-title">
+        <h2>指标趋势<span class="info" data-tip="量级模式为双 Y 轴：左轴播放量，右轴收藏/点赞。比率模式展示互动率、转化率与热度指数（0–100）。">i</span></h2>
+        <p class="sub" id="trendSub">实时滚动 · 双 Y 轴</p>
+      </div>
+      <div class="head-tools">
+        <div class="seg" id="trendMode">
+          <button type="button" data-mode="volume" class="active">量级</button>
+          <button type="button" data-mode="ratio">比率</button>
+        </div>
+        <div class="chips" id="trendChips"></div>
+      </div>
+    </div>
+    <div class="chart chart-trend" id="trendChart"></div>
+  </article>
+
+  <article class="card span-4" id="deltaCard">
+    <div class="card-head">
+      <div class="card-title">
+        <h2>每分钟增量<span class="info" data-tip="相邻两次采样：Δ播放量 ÷ 间隔分钟数，反映实时增长速度。">i</span></h2>
+        <p class="sub">Δ 播放量 / 分钟</p>
+      </div>
+      <div class="delta-last"><span id="deltaLast">—</span><i>/分</i></div>
+    </div>
+    <div class="chart chart-delta" id="deltaChart"></div>
+  </article>
+
+  <article class="card span-8" id="epsCard">
+    <div class="card-head">
+      <div class="card-title">
+        <h2>56 集点赞分布<span class="info" data-tip="各集 like_count 汇总（来自 getBookInfo.online_base），第 12 集起为付费章节。">i</span></h2>
+        <p class="sub" id="epsSub">按集数 · 付费墙位于第 12 集</p>
+      </div>
+      <div class="legend">
+        <span><i class="lg-free"></i>免费集</span>
+        <span><i class="lg-paid"></i>付费集</span>
+      </div>
+    </div>
+    <div class="chart chart-eps" id="epsChart"></div>
+  </article>
+
+  <article class="card span-4" id="funnelCard">
+    <div class="card-head">
+      <div class="card-title">
+        <h2>付费章节热度比 <span class="est-badge">估算</span></h2>
+        <p class="sub">代理指标 · 非官方付费率</p>
+      </div>
+      <span class="info info-amber" data-tip="ReelShort 未公开真实付费率/付费人数。此处为基于公开点赞数据的估算/代理指标，仅反映相对趋势。">i</span>
+    </div>
+    <div class="stat-tiles" id="statTiles"></div>
+    <div class="chart chart-funnel" id="funnelChart"></div>
+    <p class="card-note">ReelShort 未公开真实付费率或付费人数，以上为基于公开点赞数据的<strong>估算 / 代理指标</strong>；热度比 ≈100% 表示付费墙前后每集点赞热度持平。</p>
+  </article>
+
+  <article class="card span-12" id="tableCard">
+    <div class="card-head">
+      <div class="card-title">
+        <h2>实时采样明细</h2>
+        <p class="sub">最新 20 条 · Δ 为相对上一条采样</p>
+      </div>
+      <div class="table-meta" id="tableMeta">—</div>
+    </div>
+    <div class="table-wrap">
+      <table id="sampleTable">
+        <thead>
+          <tr>
+            <th>采样时间</th><th>播放量</th><th>Δ 播放</th><th>收藏</th><th>Δ 收藏</th><th>点赞</th><th>互动率</th><th>热度</th>
+          </tr>
+        </thead>
+        <tbody id="sampleBody">
+          <tr><td colspan="8" class="empty">等待数据…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </article>
+</main>
+
+<footer class="footer">
+  <div class="footer-line">
+    <span class="footer-tag" id="sourceTag">数据源 reelshort.com</span>
+    <span class="footer-lead">指标公式</span>
+    <span id="formulaList" class="formulas">—</span>
+  </div>
+  <div class="footer-line muted">
+    <span>付费相关指标均为<strong>估算 / 代理指标</strong>；</span>
+    <span>全部数据来自同源 <code>/api/*</code> 与 SSE 推送，页面离线可用、无外网 CDN。</span>
+  </div>
+</footer>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="/vendor/echarts.min.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

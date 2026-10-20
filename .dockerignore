@@ -1,0 +1,11 @@
+# 不进入构建上下文的文件
+tests
+data/*
+!data/seed.jsonl
+*.log
+.git
+.github
+node_modules
+DEPLOY.md
+README.md
+CONTRACT.md

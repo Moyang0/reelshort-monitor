@@ -1,0 +1,8 @@
+# 关键：shell 脚本和 Dockerfile 必须保持 LF，否则容器内会报 bad interpreter
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.mjs       text eol=lf
+*.js        text eol=lf
+*.jsonl     -text
+*.png       binary
+*.jpg       binary

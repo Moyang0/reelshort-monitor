@@ -1,0 +1,19 @@
+# 运行时数据（绝不提交：会无限增长，且属于你的业务数据）
+data/*
+!data/seed.jsonl
+
+# 日志
+*.log
+
+# 临时产物
+tests/results/
+tests/shots/
+tests/tmp-*
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# �������ͼ����������ֿ⣩
+tests/
